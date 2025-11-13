@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        // Jenkins credentials → type: "Username with password", ID: dockerhub-login
         DOCKERHUB_CREDENTIALS = credentials('dockerhub')
         DOCKERHUB_USERNAME    = 'akashifernando'
     }
@@ -13,15 +14,13 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Build Docker Images from Compose') {
             steps {
-                script {
-                    echo "Building backend image (myapp-server)..."
-                    sh 'docker build -t myapp-server:latest -f server/Dockerfile server'
-
-                    echo "Building frontend image (myapp-client)..."
-                    sh 'docker build -t myapp-client:latest -f client/Dockerfile client'
-                }
+                echo "Building Docker images using docker-compose..."
+                sh 'docker compose build'
+                // This builds:
+                // - myapp-server
+                // - myapp-client
             }
         }
 
