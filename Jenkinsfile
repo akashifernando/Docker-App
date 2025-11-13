@@ -15,13 +15,15 @@ pipeline {
         }
 
         stage('Build Docker Images from Compose') {
-            steps {
-                echo "Building Docker images using docker-compose..."
-                sh 'docker compose build'
-                // This builds:
-                // - myapp-server
-                // - myapp-client
-            }
+           steps {
+        script {
+            echo "Building backend image (myapp-server)..."
+            sh 'docker build -t myapp-server:latest -f server/Dockerfile server'
+
+            echo "Building frontend image (myapp-client)..."
+            sh 'docker build -t myapp-client:latest -f client/Dockerfile client'
+        }
+    }
         }
 
         stage('Tag Images for Docker Hub') {
