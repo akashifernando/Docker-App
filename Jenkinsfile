@@ -80,38 +80,36 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            steps {
-                dir('terraform') {
-                    script {
-                        def ec2Ip = sh(
-                            script: "terraform output -raw server_public_ip",
-                            returnStdout: true
-                        ).trim()
+    steps {
+        dir('terraform') {
+            script {
+                def ec2Ip = sh(
+                    script: "terraform output -raw server_public_ip",
+                    returnStdout: true
+                ).trim()
 
-                        sh """
-                        
+                sshagent(credentials: ['web-server-ssh']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ec2-user@''' + ec2Ip + ''' << 'EOF'
+                        docker pull akashifernando/myapp-server:latest
+                        docker pull akashifernando/myapp-client:latest
 
-                            ssh -o StrictHostKeyChecking=no \
-                                -i jenkins-server-key.pem \
-                                ec2-user@${ec2Ip} <<EOF
+                        docker stop myapp-server myapp-client || true
+                        docker rm myapp-server myapp-client || true
 
-                                docker pull ${DOCKERHUB_USERNAME}/myapp-server:latest
-                                docker pull ${DOCKERHUB_USERNAME}/myapp-client:latest
+                        docker run -d --name myapp-server -p 5000:5000 \
+                          akashifernando/myapp-server:latest
 
-                                docker stop myapp-server myapp-client || true
-                                docker rm myapp-server myapp-client || true
-
-                                docker run -d --name myapp-server -p 5000:5000 \
-                                  ${DOCKERHUB_USERNAME}/myapp-server:latest
-
-                                docker run -d --name myapp-client -p 3000:3000 \
-                                  ${DOCKERHUB_USERNAME}/myapp-client:latest
-                            EOF
-                        """
-                    }
+                        docker run -d --name myapp-client -p 3000:3000 \
+                          akashifernando/myapp-client:latest
+                        EOF
+                    '''
                 }
             }
         }
+    }
+}
+
 
         stage('Clean Up') {
             steps {
