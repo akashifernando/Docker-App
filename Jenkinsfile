@@ -84,9 +84,10 @@ pipeline {
                 dir('terraform') {
                     script {
                         def ec2Ip = sh(
-                            script: "terraform output -raw server_public_ip",
+                            script: "terraform output -raw instance_public_ip",
                             returnStdout: true
                         ).trim()
+                        echo "Deploying to EC2 IP: ${ec2Ip}" 
 
                         withCredentials([
                             sshUserPrivateKey(
