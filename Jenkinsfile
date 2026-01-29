@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // IDs must match the Credentials IDs you created in Jenkins
+        
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
         DOCKERHUB_USERNAME    = 'akashifernando'
     }
@@ -74,17 +74,15 @@ pipeline {
                             returnStdout: true
                         ).trim()
                         
-                        echo "🚀 Deploying to EC2 IP: ${ec2Ip}" 
+                        echo "Deploying to EC2 IP: ${ec2Ip}" 
 
-                        // We use triple double-quotes to allow ${ec2Ip} to be replaced by Jenkins
-                        // But we use << 'EOF' (quoted) so variables inside the SSH block 
-                        // are NOT evaluated by Jenkins, but by the remote shell.
+                      
                         sh """
                             chmod 400 Task-app-key.pem
                             
                             ssh -o StrictHostKeyChecking=no -i Task-app-key.pem ec2-user@${ec2Ip} << 'EOF'
                                 set -e
-                                echo "✅ Connected to EC2 Instance"
+                                echo " Connected to EC2 Instance"
 
                                 # Ensure Docker is running
                                 sudo systemctl start docker
@@ -101,7 +99,7 @@ pipeline {
                                 docker run -d --name myapp-server -p 5000:5000 ${DOCKERHUB_USERNAME}/myapp-server:latest
                                 docker run -d --name myapp-client -p 3000:3000 ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 
-                                echo "✨ Remote Deployment Finished!"
+                                echo " Remote Deployment Finished!"
                                 docker ps
 EOF
                         """
@@ -119,10 +117,10 @@ EOF
 
     post {
         success {
-            echo '✅ CI/CD pipeline completed successfully!'
+            echo ' CI/CD pipeline completed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed. Check logs.'
+            echo 'Pipeline failed. Check logs.'
         }
     }
 }
