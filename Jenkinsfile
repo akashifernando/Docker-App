@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
         DOCKERHUB_USERNAME    = 'akashifernando'
-        DOCKER_BIN            = '/usr/bin/docker'
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
     }
 
     stages {
@@ -18,8 +18,9 @@ pipeline {
         stage('Verify Docker') {
             steps {
                 sh '''
-                    $DOCKER_BIN --version
-                    $DOCKER_BIN info
+                    which docker
+                    docker --version
+                    docker info
                 '''
             }
         }
@@ -28,10 +29,10 @@ pipeline {
             steps {
                 sh '''
                     echo "Building backend image..."
-                    $DOCKER_BIN build -t myapp-server:latest -f server/dockerfile server
+                    docker build -t myapp-server:latest -f server/dockerfile server
 
                     echo "Building frontend image..."
-                    $DOCKER_BIN build -t myapp-client:latest -f client/dockerfile client
+                    docker build -t myapp-client:latest -f client/dockerfile client
                 '''
             }
         }
@@ -39,8 +40,8 @@ pipeline {
         stage('Tag Images for Docker Hub') {
             steps {
                 sh '''
-                    $DOCKER_BIN tag myapp-server:latest ${DOCKERHUB_USERNAME}/myapp-server:latest
-                    $DOCKER_BIN tag myapp-client:latest ${DOCKERHUB_USERNAME}/myapp-client:latest
+                    docker tag myapp-server:latest ${DOCKERHUB_USERNAME}/myapp-server:latest
+                    docker tag myapp-client:latest ${DOCKERHUB_USERNAME}/myapp-client:latest
                 '''
             }
         }
@@ -48,8 +49,9 @@ pipeline {
         stage('Login to Docker Hub') {
             steps {
                 sh '''
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | \
-                    $DOCKER_BIN login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login \
+                      -u "$DOCKERHUB_CREDENTIALS_USR" \
+                      --password-stdin
                 '''
             }
         }
@@ -57,8 +59,8 @@ pipeline {
         stage('Push Images to Docker Hub') {
             steps {
                 sh '''
-                    $DOCKER_BIN push ${DOCKERHUB_USERNAME}/myapp-server:latest
-                    $DOCKER_BIN push ${DOCKERHUB_USERNAME}/myapp-client:latest
+                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
+                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
                 '''
             }
         }
@@ -120,7 +122,7 @@ pipeline {
 
         stage('Clean Up') {
             steps {
-                sh '$DOCKER_BIN system prune -af || true'
+                sh 'docker system prune -af || true'
             }
         }
     }
