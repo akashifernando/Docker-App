@@ -89,7 +89,7 @@ pipeline {
                         ).trim()
 
                         sh """
-                            // chmod 400 jenkins-server-key.pem
+                        
 
                             ssh -o StrictHostKeyChecking=no \
                                 -i jenkins-server-key.pem \
