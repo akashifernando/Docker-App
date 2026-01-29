@@ -89,14 +89,9 @@ pipeline {
                         ).trim()
                         echo "Deploying to EC2 IP: ${ec2Ip}" 
 
-                        withCredentials([
-                            sshUserPrivateKey(
-                                credentialsId: 'web-server-ssh',
-                                keyFileVariable: 'SSH_KEY',
-                                usernameVariable: 'SSH_USER'
-                            )
-                        ]) {
+                      
                             sh """
+                            chmod 400 Task-app-key.pem
                                 ssh -o StrictHostKeyChecking=no \
                                     -i \$SSH_KEY \
                                     \$SSH_USER@${ec2Ip} << 'EOF'
@@ -113,7 +108,7 @@ pipeline {
                                   ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 EOF
                             """
-                        }
+                        
                     }
                 }
             }
