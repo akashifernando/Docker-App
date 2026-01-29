@@ -168,7 +168,7 @@ const Login = ({ onLogin }) => {
             {/* OAuth Buttons */}
             <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={handleGoogleSignIn} className="flex items-center justify-center w-full px-4 py-3 bg-white rounded-lg shadow-sm">
-                <span className="text-sm text-gray-700"></span>
+                <span className="text-sm text-gray-700">Sign in with Google</span>
               </button>
               <button type="button" onClick={handleAppleSignIn} className="flex items-center justify-center w-full px-4 py-3 bg-white rounded-lg shadow-sm">
                 <span className="text-sm text-gray-700">Sign in with Apple</span>
