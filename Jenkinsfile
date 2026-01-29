@@ -91,7 +91,7 @@ pipeline {
 
                         withCredentials([
                             sshUserPrivateKey(
-                                credentialsId: 'web-server-ssh',
+                                credentialsId: 'aws-credentials',
                                 keyFileVariable: 'SSH_KEY',
                                 usernameVariable: 'SSH_USER'
                             )
