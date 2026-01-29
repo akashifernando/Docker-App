@@ -15,7 +15,7 @@
 // //   (config) => {
 // //     const token = localStorage.getItem('token');
 
-    
+
 // //     if (token && !config.url.includes('/api/auth/login') && !config.url.includes('/api/auth/register')) {
 // //       config.headers.Authorization = `Bearer ${token}`;
 // //     }
@@ -30,12 +30,12 @@
 // //   (response) => response,
 // //   (error) => {
 // //     if (error.response && error.response.status === 401) {
-    
+
 // //       localStorage.removeItem('token');
 // //       localStorage.removeItem('userId');
 // //       localStorage.removeItem('userEmail');
 // //       localStorage.removeItem('username');
-      
+
 // //       window.location.href = '/login';
 // //     }
 // //     return Promise.reject(error);
@@ -85,5 +85,5 @@ export const deleteTask = (id) => {
   return Promise.resolve({ data: { message: "Deleted" } });
 };
 
-const api= { getAllTasks, createTask, updateTask, deleteTask };
+const api = { getAllTasks, createTask, updateTask, deleteTask };
 export default api;
