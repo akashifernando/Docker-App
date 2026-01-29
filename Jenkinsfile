@@ -14,54 +14,38 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images from Compose') {
-           steps {
-        script {
-            echo "Building backend image (myapp-server)..."
-            sh 'docker build -t myapp-server:latest -f server/dockerfile server'
-
-            echo "Building frontend image (myapp-client)..."
-            sh 'docker build -t myapp-client:latest -f client/dockerfile client'
-        }
-    }
-        }
-
-        stage('Tag Images for Docker Hub') {
-            steps {
-                script {
-                    def frontendImageLocal  = 'myapp-client:latest'
-                    def backendImageLocal   = 'myapp-server:latest'
-                    def frontendImageRemote = "${DOCKERHUB_USERNAME}/myapp-client:latest"
-                    def backendImageRemote  = "${DOCKERHUB_USERNAME}/myapp-server:latest"
-
-                    sh """
-                        echo "Tagging images for Docker Hub..."
-                        docker tag ${frontendImageLocal} ${frontendImageRemote}
-                        docker tag ${backendImageLocal}  ${backendImageRemote}
-                    """
+        stage('Build & Push Docker Images') {
+            parallel {
+                stage('Build & Push Backend') {
+                    steps {
+                        script {
+                            echo "Building & Pushing backend image..."
+                            sh 'docker build -t myapp-server:latest -f server/dockerfile server'
+                            
+                            def backendImageRemote = "${DOCKERHUB_USERNAME}/myapp-server:latest"
+                            sh """
+                                docker tag myapp-server:latest ${backendImageRemote}
+                                echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                                docker push ${backendImageRemote}
+                            """
+                        }
+                    }
                 }
-            }
-        }
 
-        stage('Login to Docker Hub') {
-            steps {
-                sh '''
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
-                '''
-            }
-        }
-
-        stage('Push Images to Docker Hub') {
-            steps {
-                script {
-                    def frontendImageRemote = "${DOCKERHUB_USERNAME}/myapp-client:latest"
-                    def backendImageRemote  = "${DOCKERHUB_USERNAME}/myapp-server:latest"
-
-                    sh """
-                        echo "Pushing images to Docker Hub..."
-                        docker push ${frontendImageRemote}
-                        docker push ${backendImageRemote}
-                    """
+                stage('Build & Push Frontend') {
+                    steps {
+                        script {
+                            echo "Building & Pushing frontend image..."
+                            sh 'docker build -t myapp-client:latest -f client/dockerfile client'
+                            
+                            def frontendImageRemote = "${DOCKERHUB_USERNAME}/myapp-client:latest"
+                            sh """
+                                docker tag myapp-client:latest ${frontendImageRemote}
+                                echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                                docker push ${frontendImageRemote}
+                            """
+                        }
+                    }
                 }
             }
         }
