@@ -18,10 +18,10 @@ pipeline {
            steps {
         script {
             echo "Building backend image (myapp-server)..."
-            sh '/usr/local/bin/docker-compose build -t myapp-server:latest -f server/dockerfile server'
+            sh 'docker build -t myapp-server:latest -f server/dockerfile server'
 
             echo "Building frontend image (myapp-client)..."
-            sh '/usr/local/bin/docker-compose build -t myapp-client:latest -f client/dockerfile client'
+            sh 'docker build -t myapp-client:latest -f client/dockerfile client'
         }
     }
         }
