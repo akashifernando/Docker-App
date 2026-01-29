@@ -4,7 +4,6 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
         DOCKERHUB_USERNAME    = 'akashifernando'
-        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
     }
 
     stages {
@@ -18,7 +17,6 @@ pipeline {
         stage('Verify Docker') {
             steps {
                 sh '''
-                    which docker
                     docker --version
                     docker info
                 '''
@@ -28,16 +26,13 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 sh '''
-                    echo "Building backend image..."
                     docker build -t myapp-server:latest -f server/dockerfile server
-
-                    echo "Building frontend image..."
                     docker build -t myapp-client:latest -f client/dockerfile client
                 '''
             }
         }
 
-        stage('Tag Images for Docker Hub') {
+        stage('Tag Images') {
             steps {
                 sh '''
                     docker tag myapp-server:latest ${DOCKERHUB_USERNAME}/myapp-server:latest
@@ -46,7 +41,7 @@ pipeline {
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Login Docker Hub') {
             steps {
                 sh '''
                     echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login \
@@ -56,7 +51,7 @@ pipeline {
             }
         }
 
-        stage('Push Images to Docker Hub') {
+        stage('Push Images') {
             steps {
                 sh '''
                     docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
@@ -94,13 +89,11 @@ pipeline {
                         ).trim()
 
                         sh """
-                            chmod 400 Task-app-key.pem
+                            chmod 400 jenkins-server-key.pem
 
                             ssh -o StrictHostKeyChecking=no \
-                                -i Task-app-key.pem \
+                                -i jenkins-server-key.pem \
                                 ec2-user@${ec2Ip} <<EOF
-
-                                sudo systemctl start docker
 
                                 docker pull ${DOCKERHUB_USERNAME}/myapp-server:latest
                                 docker pull ${DOCKERHUB_USERNAME}/myapp-client:latest
@@ -129,7 +122,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline completed successfully!'
+            echo '✅ CI/CD pipeline completed successfully!'
         }
         failure {
             echo '❌ Pipeline failed. Check logs.'

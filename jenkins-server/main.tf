@@ -4,37 +4,41 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    tls = {
+      source = "hashicorp/tls"
+    }
+    local = {
+      source = "hashicorp/local"
+    }
   }
 }
 
 provider "aws" {
-  region = "us-east-1" 
+  region = "us-east-1"
 }
 
-# --- 1. Unique SSH Key for Jenkins ---
-resource "tls_private_key" "jenkins_pk" {
+# --- SSH Key ---
+resource "tls_private_key" "jenkins_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "aws_key_pair" "jenkins_key" {
   key_name   = "jenkins-server-key"
-  public_key = tls_private_key.jenkins_pk.public_key_openssh
+  public_key = tls_private_key.jenkins_key.public_key_openssh
 }
 
-resource "local_file" "jenkins_private_key" {
-  content         = tls_private_key.jenkins_pk.private_key_pem
+resource "local_file" "jenkins_pem" {
+  content         = tls_private_key.jenkins_key.private_key_pem
   filename        = "jenkins-server-key.pem"
   file_permission = "0400"
 }
 
-# --- 2. Security Group (Ports 22 & 8080) ---
+# --- Security Group ---
 resource "aws_security_group" "jenkins_sg" {
-  name        = "jenkins-standalone-sg"
-  description = "Allow SSH and Jenkins Traffic"
+  name = "jenkins-sg"
 
   ingress {
-    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -42,7 +46,6 @@ resource "aws_security_group" "jenkins_sg" {
   }
 
   ingress {
-    description = "Jenkins Web UI"
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
@@ -57,61 +60,58 @@ resource "aws_security_group" "jenkins_sg" {
   }
 }
 
-# --- 3. Get Linux AMI ---
+# --- AMI ---
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]
+
   filter {
     name   = "name"
     values = ["al2023-ami-2023.*-x86_64"]
   }
 }
 
-# --- 4. The Jenkins Server ---
-resource "aws_instance" "jenkins_server" {
-  ami           = data.aws_ami.amazon_linux_2023.id
-  instance_type = "t3.small" 
-  key_name      = aws_key_pair.jenkins_key.key_name
+# --- Jenkins EC2 ---
+resource "aws_instance" "jenkins" {
+  ami                    = data.aws_ami.amazon_linux_2023.id
+  instance_type          = "t3.small"
+  key_name               = aws_key_pair.jenkins_key.key_name
   vpc_security_group_ids = [aws_security_group.jenkins_sg.id]
 
   user_data = <<-EOF
-              #!/bin/bash
-              set -e
-              
-              # 1. Install Java 21
-              yum update -y
-              yum install java-21-amazon-corretto -y
+    #!/bin/bash
+    set -e
 
-              # 2. Install Jenkins
-              wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
-              rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-              yum install jenkins -y
-              systemctl enable jenkins
-              systemctl start jenkins
+    yum update -y
+    yum install -y java-21-amazon-corretto git docker
 
-              # 3. Install Docker & Git
-              yum install git -y
-              amazon-linux-extras install docker -y
-              systemctl enable docker
-              systemctl start docker
-              usermod -a -G docker jenkins
+    systemctl enable docker
+    systemctl start docker
 
-              # 4. Install Docker Compose
-              curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              chmod +x /usr/local/bin/docker-compose
-              ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+    wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    yum install -y jenkins
 
-              EOF
+    usermod -aG docker jenkins
 
-  tags = {
-    Name = "Jenkins-Master-Node"
-  }
+    systemctl enable jenkins
+    systemctl restart jenkins
+  EOF
+
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
   }
+
+  tags = {
+    Name = "Jenkins-Server"
+  }
+}
+
+output "server_public_ip" {
+  value = aws_instance.jenkins.public_ip
 }
 
 output "jenkins_url" {
-  value = "http://${aws_instance.jenkins_server.public_ip}:8080"
+  value = "http://${aws_instance.jenkins.public_ip}:8080"
 }
