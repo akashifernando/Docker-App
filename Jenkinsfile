@@ -83,7 +83,10 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no -i Task-app-key.pem ec2-user@${ec2Ip} << 'EOF'
                                 set -e
                                 echo " Connected to EC2 Instance"
-
+                                
+                                # 1. CLEAN UP EC2 DISK SPACE FIRST
+                        echo "Cleaning up old docker data on EC2..."
+                        docker system prune -af
                                 # Ensure Docker is running
                                 sudo systemctl start docker
 
