@@ -87,17 +87,26 @@ pipeline {
                                 # Ensure Docker is running
                                 sudo systemctl start docker
 
+                                # Create network if not exists
+                                docker network create app-network || true
+
                                 # Pull images
+                                docker pull mongo
                                 docker pull ${DOCKERHUB_USERNAME}/myapp-server:latest
                                 docker pull ${DOCKERHUB_USERNAME}/myapp-client:latest
 
                                 # Stop and remove old containers
-                                docker stop myapp-server myapp-client || true
-                                docker rm myapp-server myapp-client || true
+                                docker stop myapp-client myapp-server mongo || true
+                                docker rm myapp-client myapp-server mongo || true
 
-                                # Run new containers
-                                docker run -d --name myapp-server -p 5000:5000 ${DOCKERHUB_USERNAME}/myapp-server:latest
-                                docker run -d --name myapp-client -p 3000:3000 ${DOCKERHUB_USERNAME}/myapp-client:latest
+                                # Run MongoDB
+                                docker run -d --name mongo --network app-network -p 27017:27017 -v data-volume:/data/db mongo
+
+                                # Run Server (Connects to mongo on same network)
+                                docker run -d --name myapp-server --network app-network -p 5000:5000 -e MONGO_URI=mongodb://mongo:27017/taskdb ${DOCKERHUB_USERNAME}/myapp-server:latest
+
+                                # Run Client
+                                docker run -d --name myapp-client --network app-network -p 3000:3000 ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 
                                 echo " Remote Deployment Finished!"
                                 docker ps

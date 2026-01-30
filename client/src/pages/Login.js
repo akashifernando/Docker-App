@@ -1,43 +1,39 @@
 import React, { useState } from 'react';
-import logoImage from '../logo.png'; 
-// import api from '../services/api';   
+import logoImage from '../logo.png';
+import { userLogin, userSignup } from '../services/api';
 
 const Login = ({ onLogin }) => {
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
 
 
-  
+
   const handleLoginSubmit = async (e) => {
-    e.preventDefault();// //stop browser default form submission behavior
-    // control flow using React, Axios instead of triggering a page reload.
+    e.preventDefault();
     setIsLoading(true);
 
     try {
-      if (email === '123@gmail.com' && password === '123') {
-        const fakeToken = 'demo-token-123';
-        localStorage.setItem('token', fakeToken);
-        localStorage.setItem('email', email);
+      const response = await userLogin({ username, password });
 
-        // Optional: Call parent callback if needed
-        if (onLogin) onLogin({ email, token: fakeToken });
+      // Check for success using our new wrapper logic
+      // e.g., response.data.success or response.data.data.token
 
-    
+      const responseBody = response.data;
+
+      if (responseBody.success && responseBody.data && responseBody.data.token) {
+        const { token } = responseBody.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', username);
+        if (onLogin) onLogin({ username, token });
       } else {
-        alert('Invalid credentials. Try 123@gmail.com / 123');
+        // Fallback if structure is slightly different or check success flag
+        alert(responseBody.message || 'Login failed');
       }
-      // const response = await api.post('/api/auth/login', {
-      //   username: email,
-      //   password: password,
-      // });
 
-      // const token = response.data.data;
-      // localStorage.setItem('token', token);
-      // onLogin({ email, token });
     } catch (error) {
       console.error('Login error:', error);
       alert('Invalid credentials');
@@ -46,15 +42,21 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  
+
   const handleSignUpSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      const response = await userSignup({ username, password });
+      const responseBody = response.data;
 
-      alert('Registration successful! You can now log in.');
-      setShowSignUp(false);
+      if (responseBody.success) {
+        alert('Registration successful! You can now log in.');
+        setShowSignUp(false);
+      } else {
+        alert(responseBody.message || 'Registration failed');
+      }
     } catch (error) {
       console.error('Sign up error:', error);
       alert('Registration failed');
@@ -63,7 +65,7 @@ const Login = ({ onLogin }) => {
     }
   };
 
- 
+
   const handleGoogleSignIn = () => {
     console.log('Google Sign In clicked');
   };
@@ -88,17 +90,17 @@ const Login = ({ onLogin }) => {
           </div>
 
           <form onSubmit={showSignUp ? handleSignUpSubmit : handleLoginSubmit} className="space-y-6">
-            {/* Email */}
+            {/* Username (was Email) */}
             <div>
-              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700">Email address</label>
+              <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-700">Username</label>
               <input
-                id="email"
-                type="email"
+                id="username"
+                type="text"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
 
@@ -171,7 +173,7 @@ const Login = ({ onLogin }) => {
                 <span className="text-sm text-gray-700">Sign in with Google</span>
               </button>
               <button type="button" onClick={handleAppleSignIn} className="flex items-center justify-center w-full px-4 py-3 bg-white rounded-lg shadow-sm">
-                <span className="text-sm text-gray-700"></span>
+                <span className="text-sm text-gray-700">Sign in with Apple</span>
               </button>
             </div>
 

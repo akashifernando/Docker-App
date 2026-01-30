@@ -19,7 +19,8 @@ const TaskForm = ({
 }) => {
   const [title, setTitle] = useState(initialData.title || '');
   const [description, setDescription] = useState(initialData.description || '');
-  const [subject, setSubject] = useState(initialData.category || '');
+  // Map backend 'subject' to local state
+  const [subject, setSubject] = useState(initialData.subject || initialData.category || '');
   const [dueDate, setDueDate] = useState(
     initialData.dueDate ? new Date(initialData.dueDate).toISOString().slice(0, 16) : ''
   );
@@ -28,6 +29,8 @@ const TaskForm = ({
     if (mode === 'edit' && initialData) {
       setTitle(initialData.title || '');
       setDescription(initialData.description || '');
+      // Map backend 'subject' to local state
+      setSubject(initialData.subject || initialData.category || '');
       setDueDate(
         initialData.dueDate ? new Date(initialData.dueDate).toISOString().slice(0, 16) : ''
       );
@@ -43,15 +46,15 @@ const TaskForm = ({
       if (!dateString) return null;
       return new Date(dateString).toISOString().split('T')[0];
     };
-    
+
     const taskData = {
       title,
       description,
-       category: subject,
+      subject, // Send as 'subject' to match backend
       completed: initialData.completed || false,
       dueDate: formatDateForBackend(dueDate)
     };
-    
+
     if (mode === 'add') {
       onSave && onSave(taskData);
     } else {
@@ -101,7 +104,7 @@ const TaskForm = ({
             rows={3}
           />
         </div>
-    <div className="flex mb-4 space-x-4">
+        <div className="flex mb-4 space-x-4">
           <div className="flex-1">
             <label className="block mb-1 text-lg font-semibold">Subject</label>
             <select

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Bell, User } from './Icons';
 
-const Header = ({ currentUser,onLogout}) => {
+const Header = ({ currentUser, onLogout }) => {
   return (
     <header className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between">
@@ -26,7 +26,7 @@ const Header = ({ currentUser,onLogout}) => {
             <Bell className="w-6 h-6" />
             <span className="absolute block w-2 h-2 bg-red-400 rounded-full top-1 right-1"></span>
           </button>
-          
+
 
           {/* User Menu */}
           <div className="relative">
@@ -35,21 +35,21 @@ const Header = ({ currentUser,onLogout}) => {
                 <User className="w-6 h-6 text-gray-600" />
               </div>
               <div className="hidden text-left md:block">
-                <div className="text-sm font-medium">{currentUser?.name || 'User'}</div>
+                {/* Fixed: First line static 'User', Second line is username (which looks like email) */}
+                <div className="text-sm font-medium">User</div>
                 <p className="text-xs text-gray-500 truncate">
-                        {currentUser?.email || 'user@example.com'}
-                      </p>
-                
+                  {currentUser?.username || localStorage.getItem('username') || 'user@example.com'}
+                </p>
               </div>
               <button
-                      onClick={onLogout}
-                      className="p-1 text-gray-400 transition-colors rounded-md hover:text-gray-600 hover:bg-gray-100"
-                      title="Logout"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                    </button>
+                onClick={onLogout}
+                className="p-1 text-gray-400 transition-colors rounded-md hover:text-gray-600 hover:bg-gray-100"
+                title="Logout"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </button>
           </div>
         </div>

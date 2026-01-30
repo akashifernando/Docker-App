@@ -44,18 +44,11 @@ const TaskDetails = ({ selectedTask, setShowEditModal, handleDeleteFromDetails }
             {formatTaskDateTime(selectedTask.dueDate)}
           </div>
           <div className="flex flex-wrap gap-2 mb-6">
-            {selectedTask.categories && Array.isArray(selectedTask.categories) ? (
-              selectedTask.categories.map((category, index) => (
-                <span key={index} className={getCategoryTagStyle()}>
-                  {category}
-                </span>
-              ))
-            ) : (
-              selectedTask.category && (
-                <span className={getCategoryTagStyle()}>
-                  {selectedTask.category}
-                </span>
-              )
+            {/* Display Subject */}
+            {selectedTask.subject && (
+              <span className={getCategoryTagStyle()}>
+                {selectedTask.subject}
+              </span>
             )}
           </div>
           <div className="mb-6">
