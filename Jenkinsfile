@@ -122,6 +122,7 @@ pipeline {
                                     --name myapp-server \
                                     --network app-network \
                                     -e MONGO_URI=mongodb://mongodb-server:27017/taskdb \
+                                    -e JWT_SECRET=supersecret_jwt_key \
                                     -p 5000:5000 \
                                     ${DOCKERHUB_USERNAME}/myapp-server:latest
 
