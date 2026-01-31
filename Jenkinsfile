@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
         DOCKERHUB_USERNAME    = 'akashifernando'
     }
@@ -20,28 +19,6 @@ pipeline {
                     echo "--- Local Docker Info ---"
                     docker --version
                     docker info
-                '''
-            }
-        }
-
-        stage('Build & Tag Images') {
-            steps {
-                sh '''
-                    echo "Building backend..."
-                    docker build -t ${DOCKERHUB_USERNAME}/myapp-server:latest -f server/dockerfile server
-                    
-                    echo "Building frontend..."
-                    docker build -t ${DOCKERHUB_USERNAME}/myapp-client:latest -f client/dockerfile client
-                '''
-            }
-        }
-
-        stage('Login & Push') {
-            steps {
-                sh '''
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
-                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
-                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
                 '''
             }
         }
@@ -65,6 +42,39 @@ pipeline {
             }
         }
 
+        stage('Build & Tag Images') {
+            steps {
+                script {
+                    // Fetch IP from terraform to inject into the frontend build
+                    def ec2Ip = sh(
+                        script: "cd terraform && terraform output -raw instance_public_ip",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Building backend..."
+                    sh "docker build -t ${DOCKERHUB_USERNAME}/myapp-server:latest -f server/dockerfile server"
+                    
+                    echo "Building frontend with API URL: http://${ec2Ip}:5000"
+                    sh """
+                        docker build \
+                        --build-arg REACT_APP_API_URL=http://${ec2Ip}:5000 \
+                        -t ${DOCKERHUB_USERNAME}/myapp-client:latest \
+                        -f client/dockerfile client
+                    """
+                }
+            }
+        }
+
+        stage('Login & Push') {
+            steps {
+                sh '''
+                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
+                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
+                '''
+            }
+        }
+
         stage('Deploy to EC2') {
             steps {
                 dir('terraform') {
@@ -76,7 +86,6 @@ pipeline {
                         
                         echo "Deploying to EC2 IP: ${ec2Ip}" 
 
-                      
                         sh """
                             chmod 400 Task-app-key.pem
                             
@@ -113,7 +122,6 @@ pipeline {
                                 docker rm myapp-server myapp-client || true
 
                                 # Run new containers
-                                # Inject MONGO_URI to point to the 'mongodb-server' container
                                 docker run -d \
                                     --name myapp-server \
                                     --network app-network \
@@ -124,7 +132,6 @@ pipeline {
                                 docker run -d \
                                     --name myapp-client \
                                     --network app-network \
-                                    -e REACT_APP_API_URL=http://${ec2Ip}:5000 \
                                     -p 3000:3000 \
                                     ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 
