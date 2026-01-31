@@ -124,6 +124,7 @@ pipeline {
                                 docker run -d \
                                     --name myapp-client \
                                     --network app-network \
+                                    -e REACT_APP_API_URL=http://${ec2Ip}:5000 \
                                     -p 3000:3000 \
                                     ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 
