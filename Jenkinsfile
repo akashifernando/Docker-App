@@ -85,10 +85,24 @@ pipeline {
                                 echo " Connected to EC2 Instance"
                                 
                                 # 1. CLEAN UP EC2 DISK SPACE FIRST
-                        echo "Cleaning up old docker data on EC2..."
-                        docker system prune -af
+                                echo "Cleaning up old docker data on EC2..."
+                                docker system prune -af
                                 # Ensure Docker is running
                                 sudo systemctl start docker
+
+                                # 2. Ensure a shared network exists
+                                docker network create app-network || true
+
+                                # 3. Start MongoDB (if not running)
+                                if ! [ "\$(docker ps -q -f name=mongodb-server)" ]; then
+                                    echo "Starting MongoDB container..."
+                                    docker rm -f mongodb-server || true
+                                    docker run -d \
+                                        --name mongodb-server \
+                                        --network app-network \
+                                        -v mongo_db_data:/data/db \
+                                        mongo:latest
+                                fi
 
                                 # Pull images
                                 docker pull ${DOCKERHUB_USERNAME}/myapp-server:latest
@@ -99,8 +113,19 @@ pipeline {
                                 docker rm myapp-server myapp-client || true
 
                                 # Run new containers
-                                docker run -d --name myapp-server -p 5000:5000 ${DOCKERHUB_USERNAME}/myapp-server:latest
-                                docker run -d --name myapp-client -p 3000:3000 ${DOCKERHUB_USERNAME}/myapp-client:latest
+                                # Inject MONGO_URI to point to the 'mongodb-server' container
+                                docker run -d \
+                                    --name myapp-server \
+                                    --network app-network \
+                                    -e MONGO_URI=mongodb://mongodb-server:27017/taskdb \
+                                    -p 5000:5000 \
+                                    ${DOCKERHUB_USERNAME}/myapp-server:latest
+
+                                docker run -d \
+                                    --name myapp-client \
+                                    --network app-network \
+                                    -p 3000:3000 \
+                                    ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 
                                 echo " Remote Deployment Finished!"
                                 docker ps
