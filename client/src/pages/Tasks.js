@@ -86,6 +86,29 @@ const Tasks = ({ currentUser }) => {
     }
   };
 
+  const handleToggleComplete = async (taskId, currentStatus) => {
+    try {
+      // Optimistic update could be done here, but let's wait for server for now to be safe
+      const response = await updateTask({ id: taskId, completed: !currentStatus });
+
+      if (response.data && response.data.success) {
+        const updatedTask = response.data.data;
+
+        // Update list
+        setTasks(currentTasks => currentTasks.map(t =>
+          (t.id === taskId || t._id === taskId) ? updatedTask : t
+        ));
+
+        // Update selected task if it matches
+        if (selectedTask && (selectedTask.id === taskId || selectedTask._id === taskId)) {
+          setSelectedTask(updatedTask);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling task completion:', error);
+    }
+  };
+
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -141,8 +164,8 @@ const Tasks = ({ currentUser }) => {
                 key={option.value}
                 onClick={() => setFilter(option.value)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === option.value
-                    ? 'bg-indigo-100 text-indigo-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
               >
                 {option.label} ({option.count})
@@ -176,6 +199,16 @@ const Tasks = ({ currentUser }) => {
                   onClick={() => { setSelectedTask(task); setShowEditModal(false); }}
                 >
                   <div className="flex items-start justify-between">
+                    {/* Checkbox area */}
+                    <div className="flex items-center pt-1 pr-3">
+                      <input
+                        type="checkbox"
+                        checked={task.completed || false}
+                        onChange={() => handleToggleComplete(task.id || task._id, task.completed)}
+                        onClick={(e) => e.stopPropagation()} // Prevent row click
+                        className="w-5 h-5 text-indigo-600 border-gray-300 rounded cursor-pointer focus:ring-indigo-500"
+                      />
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-medium text-gray-900">{task.title}</h4>
@@ -202,8 +235,8 @@ const Tasks = ({ currentUser }) => {
                       </div>
                     </div>
                     <div className={`px-2 py-1 rounded-full text-xs font-medium ${task.completed
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-blue-100 text-blue-800'
                       }`}>
                       {task.completed ? 'Completed' : 'Pending'}
                     </div>

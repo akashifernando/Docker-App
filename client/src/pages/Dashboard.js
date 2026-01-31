@@ -14,12 +14,12 @@ const Dashboard = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-//fetches tasks when the component loads or when the user changes.
+  //fetches tasks when the component loads or when the user changes.
   useEffect(() => {
     loadAllTasks();
-  },[currentUser]);
-  
-  
+  }, [currentUser]);
+
+
 
   const loadAllTasks = async () => {
     try {
@@ -48,18 +48,22 @@ const Dashboard = ({ currentUser }) => {
       console.error('Error creating task:', error);
     }
   };
-//updates the task completion status 
+  //updates the task completion status 
 
-  const handleToggleComplete= async (taskId,currentStatus) => {
-    try{
-       const response = await updateTask({id:taskId,completed:!currentStatus})
-       if (response.status===200){setTasks(tasks.map(task=>task.id===taskId?{...task,completed:!currentStatus}:task))}//...spread operator
-    }catch(error){
-         console.error('Error updating task:', error);
+  const handleToggleComplete = async (taskId, currentStatus) => {
+    try {
+      const response = await updateTask({ id: taskId, completed: !currentStatus })
+      if (response.status === 200) {
+        setTasks(tasks.map(task =>
+          (task.id === taskId || task._id === taskId) ? { ...task, completed: !currentStatus } : task
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
       console.error('Error details:', error.response?.data);
-      
+
     }
-  
+
   };
 
 
@@ -169,14 +173,14 @@ const Dashboard = ({ currentUser }) => {
               color="bg-green-100 text-green-600"
               icon={TrendingUp}
             />
-            
+
             <StatCard
               title="Pending"
               value={tasks.filter(task => !task.completed).length}
               color="bg-red-100 text-red-600"
               icon={Clock}
             />
-            
+
             <StatCard
               title="In Progress"
               value={tasks.filter(task => !task.completed).length}
