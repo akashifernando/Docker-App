@@ -133,6 +133,17 @@ pipeline {
                                     -p 3000:3000 \
                                     ${DOCKERHUB_USERNAME}/myapp-client:latest
                                 
+                                echo "Waiting for containers to initialize..."
+                                sleep 15
+                                
+                                echo "--- Server Container Logs ---"
+                                docker logs myapp-server
+                                echo "---------------------------"
+                                
+                                echo "--- Docker PS (All) ---"
+                                docker ps -a
+                                echo "-----------------------"
+                                
                                 echo "Remote Deployment Finished!"
                                 docker ps
 EOF
