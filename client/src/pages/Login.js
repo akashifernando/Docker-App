@@ -59,8 +59,7 @@ const Login = ({ onLogin }) => {
       }
     } catch (error) {
       console.error('Sign up error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
-      alert(`Registration Error: ${errorMessage}`);
+      alert('Registration failed');
     } finally {
       setIsLoading(false);
     }

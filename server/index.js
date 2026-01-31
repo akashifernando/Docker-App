@@ -3,15 +3,21 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const dbURI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/taskdb";
+const dbURI = process.env.MONGO_URI || "mongodb://localhost:27017/taskdb";
+
+console.log('Connecting to MongoDB at:', dbURI);
+
+const authRoutes = require('./src/routes/authRoutes');
+const taskRoutes = require('./src/routes/taskRoutes');
+
+const app = express();
+app.use(express.json());
+app.use(cors()); // Allow all origins for debugging
 
 console.log('Connecting to MongoDB at:', dbURI);
 
 mongoose
-  .connect(dbURI, {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-  })
+  .connect(dbURI)
   .then(() => console.log('Mongo connected'))
   .catch((err) => console.error('Mongo connection error:', err));
 
