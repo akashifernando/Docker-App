@@ -85,7 +85,7 @@ const Login = ({ onLogin }) => {
       <div className="flex items-center justify-center flex-1 px-6 bg-gradient-to-br from-blue-200 to-blue-300">
         <div className="w-full max-w-md p-8 shadow-xl rounded-2xl">
           <div className="mb-8 text-center">
-            <h2 className="mb-2 text-3xl font-bold text-gray-800">Welcome back!</h2>
+            <h2 className="mb-2 text-3xl font-bold text-gray-800">Akashi</h2>
             <p className="text-gray-700">Enter your credentials to access your account</p>
           </div>
 
