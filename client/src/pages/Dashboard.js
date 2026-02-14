@@ -94,7 +94,7 @@ const Dashboard = ({ currentUser }) => {
           <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900"></h2>
+                <h2 className="text-2xl font-bold text-gray-900">Welcome</h2>
                 <h3 className="mt-1 text-xl text-gray-600">Here's your next task</h3>
                 {nextTask ? (
                   <div className="mt-4">
