@@ -24,6 +24,46 @@ pipeline {
         }
 
       
+        stage('Build & Tag Images') {
+    steps {
+        script {
+            // ✅ Get CLEAN EC2 IP (no color, no noise)
+            def ec2Ip = sh(
+                script: """
+                    cd terraform
+                    terraform init -input=false -no-color > /dev/null
+                    terraform output -raw instance_public_ip -no-color
+                """,
+                returnStdout: true
+            ).trim()
+
+            echo "EC2 IP: ${ec2Ip}"
+
+            echo "Building backend..."
+            sh "docker build -t ${DOCKERHUB_USERNAME}/myapp-server:latest -f server/dockerfile server"
+            
+            echo "Building frontend with API URL: http://${ec2Ip}:5000"
+
+            // ✅ Correct build arg (no quotes, clean format)
+            sh """
+                docker build \
+                --build-arg REACT_APP_API_URL=http://${ec2Ip}:5000 \
+                -t ${DOCKERHUB_USERNAME}/myapp-client:latest \
+                -f client/dockerfile client
+            """
+        }
+    }
+}
+
+        stage('Login & Push') {
+            steps {
+                sh '''
+                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
+                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
+                '''
+            }
+        }
         stage('Terraform Init & Apply') {
             steps {
                 dir('terraform') {
@@ -40,40 +80,6 @@ pipeline {
                         '''
                     }
                 }
-            }
-        }
-
-        stage('Build & Tag Images') {
-            steps {
-                script {
-                    // Fetch the fresh EC2 IP from Terraform outputs
-                    def ec2Ip = sh(
-                        script: "cd terraform && terraform output -raw instance_public_ip",
-                        returnStdout: true
-                    ).trim()
-
-                    echo "Building backend..."
-                    sh "docker build -t ${DOCKERHUB_USERNAME}/myapp-server:latest -f server/dockerfile server"
-                    
-                    echo "Building frontend with API URL: http://${ec2Ip}:5000"
-                    // Inject the EC2 IP into the React build process
-                    sh """
-                        docker build \
-                        --build-arg REACT_APP_API_URL=http://${ec2Ip}:5000 \
-                        -t ${DOCKERHUB_USERNAME}/myapp-client:latest \
-                        -f client/dockerfile client
-                    """
-                }
-            }
-        }
-
-        stage('Login & Push') {
-            steps {
-                sh '''
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
-                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
-                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
-                '''
             }
         }
 
