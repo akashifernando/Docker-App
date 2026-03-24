@@ -7,6 +7,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/akashifernando/Docker-App.git'
@@ -16,47 +17,13 @@ pipeline {
         stage('Verify Docker') {
             steps {
                 sh '''
-                    echo "--- Local Docker Info ---"
                     docker --version
                     docker info
                 '''
             }
         }
 
-      
-        stage('Build & Tag Images') {
-            steps {
-                script {
-                    // Fetch the fresh EC2 IP from Terraform outputs
-                    def ec2Ip = sh(
-                        script: "cd terraform && terraform output -raw instance_public_ip",
-                        returnStdout: true
-                    ).trim()
-
-                    echo "Building backend..."
-                    sh "docker build -t ${DOCKERHUB_USERNAME}/myapp-server:latest -f server/dockerfile server"
-                    
-                    echo "Building frontend with API URL: http://${ec2Ip}:5000"
-                    // Inject the EC2 IP into the React build process
-                    sh """
-                        docker build \
-                        --build-arg REACT_APP_API_URL=http://${ec2Ip}:5000 \
-                        -t ${DOCKERHUB_USERNAME}/myapp-client:latest \
-                        -f client/dockerfile client
-                    """
-                }
-            }
-        }
-
-        stage('Login & Push') {
-            steps {
-                sh '''
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
-                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
-                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
-                '''
-            }
-        }
+        // ✅ 1. Create EC2 FIRST
         stage('Terraform Init & Apply') {
             steps {
                 dir('terraform') {
@@ -68,87 +35,105 @@ pipeline {
                         )
                     ]) {
                         sh '''
-                            terraform init
-                            terraform apply -auto-approve
+                            terraform init -input=false
+                            terraform apply -auto-approve -input=false
                         '''
                     }
                 }
             }
         }
 
+        // ✅ 2. Get EC2 IP
+        stage('Get EC2 IP') {
+            steps {
+                script {
+                    env.EC2_IP = sh(
+                        script: """
+                            cd terraform
+                            terraform init -input=false
+                            terraform output -raw instance_public_ip
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    echo "EC2 IP: ${env.EC2_IP}"
+                }
+            }
+        }
+
+        // ✅ 3. Build Docker Images using EC2 IP
+        stage('Build & Tag Images') {
+            steps {
+                sh "docker build -t ${DOCKERHUB_USERNAME}/myapp-server:latest -f server/dockerfile server"
+
+                sh """
+                    docker build \
+                    --build-arg REACT_APP_API_URL=http://${EC2_IP}:5000 \
+                    -t ${DOCKERHUB_USERNAME}/myapp-client:latest \
+                    -f client/dockerfile client
+                """
+            }
+        }
+
+        // ✅ 4. Push Images
+        stage('Login & Push') {
+            steps {
+                sh '''
+                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                    docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
+                    docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
+                '''
+            }
+        }
+
+        // ✅ 5. Deploy to EC2
         stage('Deploy to EC2') {
             steps {
                 dir('terraform') {
-                    script {
-                        def ec2Ip = sh(
-                            script: "terraform output -raw instance_public_ip",
-                            returnStdout: true
-                        ).trim()
+                    sh """
+                        chmod 400 Task-app-key.pem
                         
-                        echo "Deploying to EC2 IP: ${ec2Ip}" 
+                        ssh -o StrictHostKeyChecking=no -i Task-app-key.pem ec2-user@${EC2_IP} << 'EOF'
+                            set -e
+                            echo "Connected to EC2 Instance"
 
-                        sh """
-                            chmod 400 Task-app-key.pem
-                            
-                            ssh -o StrictHostKeyChecking=no -i Task-app-key.pem ec2-user@${ec2Ip} << 'EOF'
-                                set -e
-                                echo "Connected to EC2 Instance"
-                                
-                                # 1. Clean up old data
-                                docker system prune -af
-                                sudo systemctl start docker
+                            sudo systemctl start docker
+                            docker system prune -af
 
-                                # 2. Create internal bridge network
-                                docker network create app-network || true
+                            docker network create app-network || true
 
-                                # 3. Start MongoDB locally with persistence
-                                if ! [ "\$(docker ps -q -f name=mongodb-server)" ]; then
-                                    docker run -d \
-                                        --name mongodb-server \
-                                        --network app-network \
-                                        -v mongo_db_data:/data/db \
-                                        mongo:latest
-                                fi
-
-                                # 4. Pull and Restart App Containers
-                                docker pull ${DOCKERHUB_USERNAME}/myapp-server:latest
-                                docker pull ${DOCKERHUB_USERNAME}/myapp-client:latest
-
-                                docker stop myapp-server myapp-client || true
-                                docker rm myapp-server myapp-client || true
-
-                                # Start Backend linked to local Mongo
+                            if ! [ "\$(docker ps -q -f name=mongodb-server)" ]; then
                                 docker run -d \
-                                    --name myapp-server \
+                                    --name mongodb-server \
                                     --network app-network \
-                                    -e MONGO_URI=mongodb://mongodb-server:27017/taskdb \
-                                    -e JWT_SECRET=supersecret_jwt_key \
-                                    -p 5000:5000 \
-                                    ${DOCKERHUB_USERNAME}/myapp-server:latest
+                                    -v mongo_db_data:/data/db \
+                                    mongo:latest
+                            fi
 
-                                # Start Frontend
-                                docker run -d \
-                                    --name myapp-client \
-                                    --network app-network \
-                                    -p 3000:3000 \
-                                    ${DOCKERHUB_USERNAME}/myapp-client:latest
-                                
-                                echo "Waiting for containers to initialize..."
-                                sleep 15
-                                
-                                echo "--- Server Container Logs ---"
-                                docker logs myapp-server
-                                echo "---------------------------"
-                                
-                                echo "--- Docker PS (All) ---"
-                                docker ps -a
-                                echo "-----------------------"
-                                
-                                echo "Remote Deployment Finished!"
-                                docker ps
-EOF
-                        """
-                    }
+                            docker pull ${DOCKERHUB_USERNAME}/myapp-server:latest
+                            docker pull ${DOCKERHUB_USERNAME}/myapp-client:latest
+
+                            docker stop myapp-server myapp-client || true
+                            docker rm myapp-server myapp-client || true
+
+                            docker run -d \
+                                --name myapp-server \
+                                --network app-network \
+                                -e MONGO_URI=mongodb://mongodb-server:27017/taskdb \
+                                -e JWT_SECRET=supersecret_jwt_key \
+                                -p 5000:5000 \
+                                ${DOCKERHUB_USERNAME}/myapp-server:latest
+
+                            docker run -d \
+                                --name myapp-client \
+                                --network app-network \
+                                -p 3000:3000 \
+                                ${DOCKERHUB_USERNAME}/myapp-client:latest
+
+                            sleep 10
+                            docker ps
+                        EOF
+                    """
                 }
             }
         }
