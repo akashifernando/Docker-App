@@ -24,6 +24,11 @@ mongoose
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 
+// Default Route for the naked IP Address
+app.get('/', (req, res) => {
+  res.send('<h2>Welcome to the Task App Backend API!</h2><p>Your Docker backend container is successfully running on AWS.</p>');
+});
+
 // Basic error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
