@@ -24,6 +24,25 @@ pipeline {
         }
 
       
+        stage('Terraform Init & Apply') {
+            steps {
+                dir('terraform') {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-credentials',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh '''
+                            terraform init
+                            terraform apply -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Build & Tag Images') {
     steps {
         script {
@@ -62,24 +81,6 @@ pipeline {
                     docker push ${DOCKERHUB_USERNAME}/myapp-server:latest
                     docker push ${DOCKERHUB_USERNAME}/myapp-client:latest
                 '''
-            }
-        }
-        stage('Terraform Init & Apply') {
-            steps {
-                dir('terraform') {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'aws-credentials',
-                            usernameVariable: 'AWS_ACCESS_KEY_ID',
-                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                        )
-                    ]) {
-                        sh '''
-                            terraform init
-                            terraform apply -auto-approve
-                        '''
-                    }
-                }
             }
         }
 
