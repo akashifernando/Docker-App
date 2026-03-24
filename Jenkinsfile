@@ -40,7 +40,7 @@ pipeline {
                     // Inject the EC2 IP into the React build process
                     sh """
                         docker build \
-                        --build-arg REACT_APP_API_URL=http://${ec2Ip}:5000 \
+                        --buildx-arg REACT_APP_API_URL=http://${ec2Ip}:5000 \
                         -t ${DOCKERHUB_USERNAME}/myapp-client:latest \
                         -f client/dockerfile client
                     """
